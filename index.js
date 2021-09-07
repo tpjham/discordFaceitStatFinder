@@ -15,24 +15,27 @@ client.once("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
+  let toSend = ``;
   if (message.content.startsWith("# userid")) {
     try {
       const test = message.content.split("\n");
       test.forEach((line) => {
-        const rivi = line.split(" ");
-        if (rivi[4] && rivi[4].startsWith("STEAM_")) {
-          const authHeader = {
-            headers: { Authorization: `Bearer ${API_KEY}` },
-          };
+        const rivi = line.split('"');
+        if (rivi[2]) {
+          const riviParse = rivi[2].split(" ");
+          if (riviParse[1] && riviParse[1].startsWith("STEAM_")) {
+            const authHeader = {
+              headers: { Authorization: `Bearer ${API_KEY}` },
+            };
 
-          const sid = new SteamID(rivi[4]);
+            const sid = new SteamID(riviParse[1]);
 
-          try {
-            axios
-              .get(
-                `https://open.faceit.com/data/v4/players?game=csgo&game_player_id=${sid}`,
-                authHeader
-              )
+            try {
+              axios
+                .get(
+                  `https://open.faceit.com/data/v4/players?game=csgo&game_player_id=${sid}`,
+                  authHeader
+                )
                 .then(async (response) => {
                   if (response.status === 200) {
                     const playerData = response.data;
@@ -42,26 +45,35 @@ client.on("messageCreate", async (message) => {
                         `https://open.faceit.com/data/v4/players/${playerData.player_id}/stats/csgo`,
                         authHeader
                       )
-                        .catch((err) => console.log("Something went wrong 1"));
+                      .catch((err) => console.log("Something went wrong 1"));
                     const playerStats = result2.data;
-                    message.channel.send(
-                      `\`\`\`\t\t\t\t  Steam nick: ${rivi[3]} (Faceit: ${playerData.nickname})
-                  ELO: ${playerData.games.csgo.faceit_elo}\t\t    (Level: ${playerData.games.csgo.skill_level})
-                  Matches: ${playerStats.lifetime.Matches}\t\t   (Winrate: ${playerStats.lifetime["Win Rate %"]}%)
-                  K/D: ${playerStats.lifetime["Average K/D Ratio"]}\t\t    (HS: ${playerStats.lifetime["Average Headshots %"]}%)\`\`\``
-                    );
+                    toSend =
+                      toSend +
+                      `\t\t\t\t\t  Steam nick: ${rivi[1]} (Faceit: ${playerData.nickname})
+                      ELO: ${playerData.games.csgo.faceit_elo}\t\t    (Level: ${playerData.games.csgo.skill_level})
+                      Matches: ${playerStats.lifetime.Matches}\t\t   (Winrate: ${playerStats.lifetime["Win Rate %"]}%)
+                      K/D: ${playerStats.lifetime["Average K/D Ratio"]}\t\t    (HS: ${playerStats.lifetime["Average Headshots %"]}%)\n\n`;
                   } else {
-                    message.channel.send(`Couldn't find user ${rivi[3]} on faceit!`);
+                    toSend =
+                      toSend +
+                      `\t\t\t\t\tCouldn't find user ${rivi[1]} on faceit!\n\n`;
                   }
                 })
-                .catch(err => {
-                  message.channel.send(`Couldn't find user ${rivi[3]} on faceit!`)
+                .catch((err) => {
+                  console.log(err.status);
+                  toSend =
+                    toSend +
+                    `\t\t\t\t\tCouldn't find user ${rivi[1]} on faceit!\n\n`;
                 });
-          } catch (err) {
-            console.log("Something went wrong");
+            } catch (err) {
+              console.log("Something went wrong");
+            }
           }
         }
       });
+      setTimeout(() => {
+        message.channel.send(`\`\`\`\n` + toSend + `\n\`\`\``);
+      }, 3000);
     } catch (err) {
       console.log(err);
     }
